@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>เปลี่ยน Font Facebook – พิมพ์แล้วกดคัดลอก</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #eef2f7; --card: #ffffff; --ink: #14213d; --muted: #5b6b85;
+    --line: #d6deea; --accent: #1b5fe0; --accent-ink: #ffffff; --ok: #12805c;
+    box-sizing: border-box;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #0f1623; --card: #182236; --ink: #e8eefb; --muted: #9aabc7; --line: #2a3957; --accent: #5b8cff; --accent-ink: #0b1220; --ok: #4fd1a0; }
+  }
+  *, *::before, *::after { box-sizing: inherit; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: "Noto Sans Thai", system-ui, sans-serif; line-height: 1.6; }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 32px 16px 80px; }
+  h1 { font-size: clamp(1.6rem, 4vw, 2.2rem); margin: 0 0 4px; line-height: 1.25; }
+  .sub { color: var(--muted); margin: 0 0 24px; }
+  .input-box { position: sticky; top: 0; z-index: 5; background: var(--bg); padding: 8px 0 16px; }
+  textarea { width: 100%; min-height: 110px; resize: vertical; padding: 14px 16px; font: inherit; font-size: 1.15rem; color: var(--ink); background: var(--card); border: 2px solid var(--line); border-radius: 12px; }
+  textarea:focus { outline: 3px solid var(--accent); outline-offset: 1px; border-color: var(--accent); }
+  .row { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 8px; flex-wrap: wrap; }
+  .hint { color: var(--muted); font-size: .88rem; margin: 0; }
+  .clear { font: inherit; font-size: .9rem; background: none; border: 1px solid var(--line); color: var(--ink); border-radius: 8px; padding: 4px 12px; cursor: pointer; }
+  .clear:hover { border-color: var(--accent); }
+  .search { width: 100%; margin: 4px 0 16px; padding: 10px 14px; font: inherit; color: var(--ink); background: var(--card); border: 1px solid var(--line); border-radius: 10px; }
+  .search:focus-visible, .clear:focus-visible, .copy:focus-visible, .out:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  .list { display: grid; gap: 10px; }
+  .item { display: grid; grid-template-columns: 1fr auto; gap: 8px 14px; align-items: center; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+  .name { grid-column: 1 / -1; font-size: .8rem; color: var(--muted); margin: 0; }
+  .out { font-size: 1.2rem; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; cursor: pointer; border-radius: 6px; font-family: "Segoe UI Symbol", "Noto Sans Symbols 2", "Noto Sans Math", "Noto Sans Thai", system-ui, sans-serif; }
+  .copy { font: inherit; font-weight: 600; font-size: .92rem; min-width: 104px; padding: 8px 14px; border: 0; border-radius: 9px; cursor: pointer; background: var(--accent); color: var(--accent-ink); }
+  .copy:hover { filter: brightness(1.08); }
+  .copy.done { background: var(--ok); color: #fff; }
+  .empty { text-align: center; color: var(--muted); padding: 32px 0; }
+  .toast { position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 20px); background: var(--ink); color: var(--bg); padding: 10px 18px; border-radius: 999px; opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; font-size: .95rem; }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+  @media (max-width: 520px) { .item { grid-template-columns: 1fr; } .copy { width: 100%; } }
+  @media (prefers-reduced-motion: reduce) { .toast { transition: none; } }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <h1>เปลี่ยน Font Facebook</h1>
+  <p class="sub">พิมพ์ข้อความ แล้วกด “คัดลอก” ที่แบบที่ชอบ นำไปวางใน Facebook, IG, TikTok ได้เลย</p>
+
+  <div class="input-box">
+    <textarea id="text" placeholder="พิมพ์ข้อความที่นี่ เช่น Hello World" aria-label="ข้อความที่ต้องการเปลี่ยน font" autofocus>Hello World</textarea>
+    <div class="row">
+      <p class="hint">ใช้ได้กับตัวอักษรอังกฤษ (A–Z) และตัวเลข ส่วนภาษาไทยจะคงเดิม</p>
+      <button class="clear" id="clear" type="button">ล้างข้อความ</button>
+    </div>
+  </div>
+
+  <input class="search" id="search" type="search" placeholder="ค้นหาแบบ font เช่น bold, script, circle" aria-label="ค้นหาแบบ font">
+  <section class="list" id="list" aria-live="polite"></section>
+  <p class="empty" id="empty" hidden>ไม่พบ font ที่ค้นหา</p>
+</main>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+const cp = (n) => String.fromCodePoint(n);
+const A = "ABCDEFGHIJKLMNOPQRSTUVWXYZ", a = "abcdefghijklmnopqrstuvwxyz", D = "0123456789";
+
+// สร้างตารางแปลงตัวอักษรจากจุดเริ่มต้นของ Unicode block
+function offsetMap(upper, lower, digit, extra = {}) {
+  const m = {};
+  [...A].forEach((c, i) => { if (upper != null) m[c] = cp(upper + i); });
+  [...a].forEach((c, i) => { if (lower != null) m[c] = cp(lower + i); });
+  [...D].forEach((c, i) => { if (digit != null) m[c] = cp(digit + i); });
+  return Object.assign(m, extra);
+}
+// สร้างตารางแปลงจากสตริงคู่กัน
+function pairMap(from, to) {
+  const m = {}, t = [...to];
+  [...from].forEach((c, i) => { m[c] = t[i]; });
+  return m;
+}
+const upperAsLower = (m) => { [...A].forEach((c) => { m[c] = m[c.toLowerCase()]; }); return m; };
+
+const FONTS = [
+  { name: "Bold (ตัวหนา)", map: offsetMap(0x1D400, 0x1D41A, 0x1D7CE) },
+  { name: "Italic (ตัวเอียง)", map: offsetMap(0x1D434, 0x1D44E, null, { h: "\u210E" }) },
+  { name: "Bold Italic (หนาเอียง)", map: offsetMap(0x1D468, 0x1D482, 0x1D7CE) },
+  { name: "Sans", map: offsetMap(0x1D5A0, 0x1D5BA, 0x1D7E2) },
+  { name: "Sans Bold", map: offsetMap(0x1D5D4, 0x1D5EE, 0x1D7EC) },
+  { name: "Sans Italic", map: offsetMap(0x1D608, 0x1D622, 0x1D7E2) },
+  { name: "Sans Bold Italic", map: offsetMap(0x1D63C, 0x1D656, 0x1D7EC) },
+  { name: "Script (ลายมือ)", map: offsetMap(0x1D49C, 0x1D4B6, null, { B: "\u212C", E: "\u2130", F: "\u2131", H: "\u210B", I: "\u2110", L: "\u2112", M: "\u2133", R: "\u211B", e: "\u212F", g: "\u210A", o: "\u2134" }) },
+  { name: "Bold Script", map: offsetMap(0x1D4D0, 0x1D4EA, 0x1D7CE) },
+  { name: "Fraktur (โกธิค)", map: offsetMap(0x1D504, 0x1D51E, null, { C: "\u212D", H: "\u210C", I: "\u2111", R: "\u211C", Z: "\u2128" }) },
+  { name: "Bold Fraktur", map: offsetMap(0x1D56C, 0x1D586, 0x1D7CE) },
+  { name: "Double-struck (ตัวกลวง)", map: offsetMap(0x1D538, 0x1D552, 0x1D7D8, { C: "\u2102", H: "\u210D", N: "\u2115", P: "\u2119", Q: "\u211A", R: "\u211D", Z: "\u2124" }) },
+  { name: "Monospace", map: offsetMap(0x1D670, 0x1D68A, 0x1D7F6) },
+  { name: "Circled (วงกลม)", map: Object.assign(offsetMap(0x24B6, 0x24D0, null), pairMap("123456789", "①②③④⑤⑥⑦⑧⑨"), { 0: "\u24EA" }) },
+  { name: "Negative Circled (วงกลมดำ)", map: upperAsLower(offsetMap(null, 0x1F150, null)) },
+  { name: "Squared (สี่เหลี่ยม)", map: upperAsLower(offsetMap(0x1F130, null, null)) },
+  { name: "Negative Squared (สี่เหลี่ยมดำ)", map: upperAsLower(offsetMap(0x1F170, null, null)) },
+  { name: "Parenthesized (วงเล็บ)", map: upperAsLower(offsetMap(null, 0x249C, null)) },
+  { name: "Fullwidth (ตัวกว้าง)", map: Object.assign(offsetMap(0xFF21, 0xFF41, 0xFF10), { " ": "\u3000" }) },
+  { name: "Small Caps", map: Object.assign(pairMap(a, "ᴀʙᴄᴅᴇꜰɢʜɪᴊᴋʟᴍɴᴏᴘǫʀsᴛᴜᴠᴡxʏᴢ"), pairMap(A, "ᴀʙᴄᴅᴇꜰɢʜɪᴊᴋʟᴍɴᴏᴘǫʀsᴛᴜᴠᴡxʏᴢ")) },
+  { name: "Upside Down (กลับหัว)", reverse: true,
+    map: Object.assign(
+      pairMap(a, "ɐqɔpǝɟƃɥᴉɾʞlɯuodbɹsʇnʌʍxʎz"),
+      pairMap(A, "∀qƆpƎℲ⅁HIſ⋊˥WNOԀQᴚS⊥∩ΛMX⅄Z"),
+      pairMap(D, "0ƖᄅƐㄣϛ9ㄥ86")) },
+  { name: "Strikethrough (ขีดฆ่า)", combine: "\u0336" },
+  { name: "Underline (ขีดเส้นใต้)", combine: "\u0332" },
+];
+
+function convert(font, text) {
+  if (font.combine) return [...text].map((c) => (c === "\n" ? c : c + font.combine)).join("");
+  let chars = [...text].map((c) => font.map[c] ?? c);
+  if (font.reverse) chars = chars.reverse();
+  return chars.join("");
+}
+
+const $ = (id) => document.getElementById(id);
+const input = $("text"), list = $("list"), search = $("search"), empty = $("empty"), toast = $("toast");
+let toastTimer;
+
+function showToast(msg) {
+  toast.textContent = msg;
+  toast.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove("show"), 1600);
+}
+
+async function copyText(str, btn) {
+  try {
+    await navigator.clipboard.writeText(str);
+  } catch (e) {
+    const t = document.createElement("textarea");
+    t.value = str; t.style.position = "fixed"; t.style.opacity = "0";
+    document.body.appendChild(t); t.select(); document.execCommand("copy"); t.remove();
+  }
+  showToast("คัดลอกแล้ว");
+  if (btn) {
+    btn.textContent = "คัดลอกแล้ว ✓"; btn.classList.add("done");
+    setTimeout(() => { btn.textContent = "คัดลอก"; btn.classList.remove("done"); }, 1500);
+  }
+}
+
+function render() {
+  const text = input.value || "Hello World";
+  const q = search.value.trim().toLowerCase();
+  list.textContent = "";
+  let shown = 0;
+  FONTS.forEach((f) => {
+    if (q && !f.name.toLowerCase().includes(q)) return;
+    shown++;
+    const result = convert(f, text);
+    const item = document.createElement("article");
+    item.className = "item";
+    const name = document.createElement("p"); name.className = "name"; name.textContent = f.name;
+    const out = document.createElement("div"); out.className = "out"; out.textContent = result;
+    out.tabIndex = 0; out.title = "คลิกเพื่อคัดลอก";
+    const btn = document.createElement("button"); btn.className = "copy"; btn.type = "button"; btn.textContent = "คัดลอก";
+    btn.setAttribute("aria-label", "คัดลอก " + f.name);
+    btn.addEventListener("click", () => copyText(result, btn));
+    out.addEventListener("click", () => copyText(result, btn));
+    out.addEventListener("keydown", (e) => { if (e.key === "Enter") copyText(result, btn); });
+    item.append(name, out, btn);
+    list.appendChild(item);
+  });
+  empty.hidden = shown > 0;
+}
+
+input.addEventListener("input", render);
+search.addEventListener("input", render);
+$("clear").addEventListener("click", () => { input.value = ""; render(); input.focus(); });
+render();
+</script>
+</body>
+</html>
